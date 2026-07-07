@@ -1,9 +1,13 @@
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include "globals.hpp"
+#include "block.h"
 
 GLuint load_shader_program()
 {
@@ -68,39 +72,28 @@ int main()
 
     GLuint shader_program = load_shader_program();
 
-    GLuint vao, vbo;
-    GLfloat vertices[] = {
-        0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f, 0.0, 1.0f
-    };
-
-
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+    //Init blocks here
+    
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    glUseProgram(shader_program);
+    const glm::mat4 projection = glm::ortho(0.0f, WINDOW_WIDTH<float>, WINDOW_HEIGHT<float>, 0.0f);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
     while (!glfwWindowShouldClose(window)){
+        //Update blocks here
+
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shader_program);
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        //Draw blocks here
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     glDeleteProgram(shader_program);
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
