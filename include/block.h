@@ -7,6 +7,7 @@
 class Block
 {
 private:
+    const bool solid;
     GLuint vao;
     GLuint vbo;
     GLuint ebo;
@@ -18,7 +19,8 @@ private:
 
     void update_vertices();
 public:
-    Block(const glm::vec2& position, const glm::vec3& color, const GLfloat width, const GLfloat height);
+    glm::vec2 velocity;
+    Block(const glm::vec2& position, const glm::vec3& color, const GLfloat width, const GLfloat height, const bool solid);
 
     static constexpr std::array<GLushort, 6> INDICES = {
         2, 1, 0,

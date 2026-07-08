@@ -1,10 +1,13 @@
 #include "block.h"
+#include "globals.hpp"
 
-Block::Block(const glm::vec2& position, const glm::vec3& color, const GLfloat width, const GLfloat height):
+Block::Block(const glm::vec2& position, const glm::vec3& color, const GLfloat width, const GLfloat height, const bool solid):
+    solid(solid),
     position(position),
     color(color / 255.0f),
     width(width),
-    height(height)
+    height(height),
+    velocity(glm::vec2(0.0f))
 {
     vertices = {
         position.x, position.y, color.r, color.g, color.b,
@@ -42,7 +45,15 @@ void Block::update_vertices()
 
 void Block::update()
 {
-    position.x += 2.0f;
+    if (solid){
+        const glm::vec2 next_pos  = position + velocity;
+        if (next_pos.y > 0.0f && next_pos.y + height < WINDOW_HEIGHT<float>){
+            position = next_pos;
+        }
+    }
+    else{
+        position += velocity;
+    }
     update_vertices();
 }
  

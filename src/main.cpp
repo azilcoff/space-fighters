@@ -50,6 +50,31 @@ GLuint load_shader_program()
     return shader_program;
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    auto p_players = reinterpret_cast<std::array<Block*, 2>*>(glfwGetWindowUserPointer(window));
+    if (action == GLFW_PRESS){
+        if (key == GLFW_KEY_W)
+            p_players->at(0)->velocity.y = -PLAYER_SPEED;
+        else if (key == GLFW_KEY_S)
+            p_players->at(0)->velocity.y = PLAYER_SPEED;
+        else if (key == GLFW_KEY_UP)
+            p_players->at(1)->velocity.y = -PLAYER_SPEED;
+        else if (key == GLFW_KEY_DOWN)
+            p_players->at(1)->velocity.y = PLAYER_SPEED; 
+    }
+    else{
+        if (key == GLFW_KEY_W && p_players->at(0)->velocity.y == -PLAYER_SPEED)
+            p_players->at(0)->velocity.y = 0.0f;
+        else if (key == GLFW_KEY_S && p_players->at(0)->velocity.y == PLAYER_SPEED)
+            p_players->at(0)->velocity.y = 0.0f;
+        else if (key == GLFW_KEY_UP && p_players->at(1)->velocity.y == -PLAYER_SPEED)
+            p_players->at(1)->velocity.y = 0.0f;
+        else if (key == GLFW_KEY_DOWN && p_players->at(1)->velocity.y == PLAYER_SPEED)
+            p_players->at(1)->velocity.y = 0.0f;
+    }
+}
+
 int main()
 {
     glfwInit();
@@ -64,6 +89,8 @@ int main()
         glfwTerminate();
         return 1;
     }
+
+    glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
     glfwMakeContextCurrent(window);
     gladLoadGL();
 
@@ -73,10 +100,21 @@ int main()
     GLuint shader_program = load_shader_program();
 
     //Init blocks here
+    Block player_1(glm::vec2(0.0f, PLAYER_START_Y), glm::vec3(0.0f, 255.0f, 0.0f), PLAYER_SHIP_WIDTH, PLAYER_SHIP_HEIGHT, true);
+    Block player_2(glm::vec2(WINDOW_WIDTH<float> - PLAYER_SHIP_WIDTH, PLAYER_START_Y), glm::vec3(0.0f, 0.0f, 255.0f), PLAYER_SHIP_WIDTH, PLAYER_SHIP_HEIGHT, true);
     
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    std::array<Block*, 2> players = {
+        &player_1,
+        &player_2
+    };
+
+    glfwSetWindowUserPointer(window, &players);
+
+    glfwSetKeyCallback(window, key_callback);
 
     glUseProgram(shader_program);
     const glm::mat4 projection = glm::ortho(0.0f, WINDOW_WIDTH<float>, WINDOW_HEIGHT<float>, 0.0f);
@@ -84,16 +122,22 @@ int main()
 
     while (!glfwWindowShouldClose(window)){
         //Update blocks here
+        player_1.update();
+        player_2.update();
 
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shader_program);
         //Draw blocks here
+        player_1.draw();
+        player_2.draw();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     glDeleteProgram(shader_program);
+    player_1.destroy();
+    player_2.destroy();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
