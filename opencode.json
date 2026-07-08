@@ -3,6 +3,7 @@
     "permission":{
         "read": "allow",
         "write": "deny",
+        "edit": "deny",
         "bash": {
             "*": "ask",
             "touch *": "deny",

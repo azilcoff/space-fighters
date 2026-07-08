@@ -56,6 +56,11 @@ void Block::update()
     }
     update_vertices();
 }
+
+const glm::vec2 Block::get_position() const
+{
+    return position;
+}
  
 void Block::draw() const
 {

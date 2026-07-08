@@ -6,6 +6,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <algorithm>
+#include <cstddef>
 #include "globals.hpp"
 #include "block.h"
 
@@ -50,28 +53,47 @@ GLuint load_shader_program()
     return shader_program;
 }
 
+struct GameData
+{
+    std::vector<Block> lazers;
+    Block* player_1;
+    Block* player_2;
+};
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    auto p_players = reinterpret_cast<std::array<Block*, 2>*>(glfwGetWindowUserPointer(window));
+    auto p_game_data = reinterpret_cast<GameData*>(glfwGetWindowUserPointer(window));
     if (action == GLFW_PRESS){
         if (key == GLFW_KEY_W)
-            p_players->at(0)->velocity.y = -PLAYER_SPEED;
+            p_game_data->player_1->velocity.y = -PLAYER_SPEED;
         else if (key == GLFW_KEY_S)
-            p_players->at(0)->velocity.y = PLAYER_SPEED;
+            p_game_data->player_1->velocity.y = PLAYER_SPEED;
         else if (key == GLFW_KEY_UP)
-            p_players->at(1)->velocity.y = -PLAYER_SPEED;
+            p_game_data->player_2->velocity.y = -PLAYER_SPEED;
         else if (key == GLFW_KEY_DOWN)
-            p_players->at(1)->velocity.y = PLAYER_SPEED; 
+            p_game_data->player_2->velocity.y = PLAYER_SPEED; 
+        else if (key == GLFW_KEY_Q){
+            const glm::vec2 player_pos = p_game_data->player_1->get_position();
+            Block lazer(glm::vec2(player_pos.x + LAZER_WIDTH, player_pos.y + p_game_data->player_1->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
+            lazer.velocity.x = LAZER_SPEED;
+            p_game_data->lazers.push_back(lazer);
+        }
+        else if (key == GLFW_KEY_ENTER){
+            const glm::vec2 player_pos = p_game_data->player_2->get_position();
+            Block lazer(glm::vec2(player_pos.x - LAZER_WIDTH, player_pos.y + p_game_data->player_2->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
+            lazer.velocity.x = -LAZER_SPEED;
+            p_game_data->lazers.push_back(lazer);
+        }
     }
     else{
-        if (key == GLFW_KEY_W && p_players->at(0)->velocity.y == -PLAYER_SPEED)
-            p_players->at(0)->velocity.y = 0.0f;
-        else if (key == GLFW_KEY_S && p_players->at(0)->velocity.y == PLAYER_SPEED)
-            p_players->at(0)->velocity.y = 0.0f;
-        else if (key == GLFW_KEY_UP && p_players->at(1)->velocity.y == -PLAYER_SPEED)
-            p_players->at(1)->velocity.y = 0.0f;
-        else if (key == GLFW_KEY_DOWN && p_players->at(1)->velocity.y == PLAYER_SPEED)
-            p_players->at(1)->velocity.y = 0.0f;
+        if (key == GLFW_KEY_W && p_game_data->player_1->velocity.y == -PLAYER_SPEED)
+            p_game_data->player_1->velocity.y = 0.0f;
+        else if (key == GLFW_KEY_S && p_game_data->player_1->velocity.y == PLAYER_SPEED)
+            p_game_data->player_1->velocity.y = 0.0f;
+        else if (key == GLFW_KEY_UP && p_game_data->player_2->velocity.y == -PLAYER_SPEED)
+            p_game_data->player_2->velocity.y = 0.0f;
+        else if (key == GLFW_KEY_DOWN && p_game_data->player_2->velocity.y == PLAYER_SPEED)
+            p_game_data->player_2->velocity.y = 0.0f;
     }
 }
 
@@ -107,12 +129,13 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    std::array<Block*, 2> players = {
-        &player_1,
-        &player_2
+    GameData game_data = {
+        .lazers = {},
+        .player_1 = &player_1,
+        .player_2 = &player_2
     };
 
-    glfwSetWindowUserPointer(window, &players);
+    glfwSetWindowUserPointer(window, &game_data);
 
     glfwSetKeyCallback(window, key_callback);
 
@@ -124,12 +147,24 @@ int main()
         //Update blocks here
         player_1.update();
         player_2.update();
+        for (std::size_t i = 0; i < game_data.lazers.size(); ++i){
+            game_data.lazers[i].update();
+            const glm::vec2 lazer_pos = game_data.lazers[i].get_position();
+            if (lazer_pos.x + game_data.lazers[i].width < 0.0f || lazer_pos.x > WINDOW_WIDTH<float>){
+                game_data.lazers[i].destroy();
+                game_data.lazers.erase(game_data.lazers.begin() + i);
+                --i;
+            }
+        }
 
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shader_program);
         //Draw blocks here
         player_1.draw();
         player_2.draw();
+        for (const auto& lazer : game_data.lazers){
+            lazer.draw();
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -138,6 +173,9 @@ int main()
     glDeleteProgram(shader_program);
     player_1.destroy();
     player_2.destroy();
+    for (auto& lazer : game_data.lazers){
+        lazer.destroy();
+    }
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
