@@ -12,6 +12,7 @@ private:
     GLuint vbo;
     GLuint ebo;
     glm::vec2 position;
+    glm::vec3 gl_color;
     glm::vec3 color;
     std::array<GLfloat, 30> vertices;
 
@@ -28,7 +29,9 @@ public:
     };
 
     const glm::vec2 get_position() const;
+    const glm::vec3 get_color() const;
 
+    void set_color(const glm::vec3& color);
     void draw() const;
     void update();
 

@@ -4,16 +4,17 @@
 Block::Block(const glm::vec2& position, const glm::vec3& color, const GLfloat width, const GLfloat height, const bool solid):
     solid(solid),
     position(position),
-    color(color / 255.0f),
+    color(color),
+    gl_color(color / 255.0f),
     width(width),
     height(height),
     velocity(glm::vec2(0.0f))
 {
     vertices = {
-        position.x, position.y, color.r, color.g, color.b,
-        position.x + width, position.y, color.r, color.g, color.b,
-        position.x + width, position.y + height, color.r, color.g, color.b,
-        position.x, position.y + height, color.r, color.g, color.b
+        position.x, position.y, gl_color.r, gl_color.g, gl_color.b,
+        position.x + width, position.y, gl_color.r, gl_color.g, gl_color.b,
+        position.x + width, position.y + height, gl_color.r, gl_color.g, gl_color.b,
+        position.x, position.y + height, gl_color.r, gl_color.g, gl_color.b
     };
 
     glGenVertexArrays(1, &vao);
@@ -33,10 +34,10 @@ Block::Block(const glm::vec2& position, const glm::vec3& color, const GLfloat wi
 void Block::update_vertices()
 {
     vertices = {
-        position.x, position.y, color.r, color.g, color.b,
-        position.x + width, position.y, color.r, color.g, color.b,
-        position.x + width, position.y + height, color.r, color.g, color.b,
-        position.x, position.y + height, color.r, color.g, color.b
+        position.x, position.y, gl_color.r, gl_color.g, gl_color.b,
+        position.x + width, position.y, gl_color.r, gl_color.g, gl_color.b,
+        position.x + width, position.y + height, gl_color.r, gl_color.g, gl_color.b,
+        position.x, position.y + height, gl_color.r, gl_color.g, gl_color.b
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -61,11 +62,23 @@ const glm::vec2 Block::get_position() const
 {
     return position;
 }
- 
+
+const glm::vec3 Block::get_color() const
+{
+    return color;
+}
+
 void Block::draw() const
 {
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+}
+
+void Block::set_color(const glm::vec3& color)
+{
+    this->color = color;
+    gl_color = this->color / 255.0f;
+    update_vertices();
 }
 
 void Block::destroy()

@@ -11,3 +11,4 @@ constexpr float PLAYER_SPEED = 10.0f;
 constexpr float LAZER_WIDTH = 120.0f;
 constexpr float LAZER_HEIGHT = 25.0f;
 constexpr float LAZER_SPEED = 12.0f;
+constexpr float PLAYER_HEALTH_INDICATOR_SIZE = 80.0f;

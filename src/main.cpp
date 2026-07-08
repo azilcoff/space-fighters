@@ -58,6 +58,8 @@ struct GameData
     std::vector<Block> lazers;
     Block* player_1;
     Block* player_2;
+    Block* plr_1_health_indicator;
+    Block* plr_2_health_indicator;
 };
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -124,7 +126,8 @@ int main()
     //Init blocks here
     Block player_1(glm::vec2(0.0f, PLAYER_START_Y), glm::vec3(0.0f, 255.0f, 0.0f), PLAYER_SHIP_WIDTH, PLAYER_SHIP_HEIGHT, true);
     Block player_2(glm::vec2(WINDOW_WIDTH<float> - PLAYER_SHIP_WIDTH, PLAYER_START_Y), glm::vec3(0.0f, 0.0f, 255.0f), PLAYER_SHIP_WIDTH, PLAYER_SHIP_HEIGHT, true);
-    
+    Block plr_1_health_indicator(glm::vec2(PLAYER_SHIP_WIDTH + 10.0f, WINDOW_HEIGHT<float> - 10.0f - PLAYER_HEALTH_INDICATOR_SIZE), glm::vec3(0.0f, 255.0f, 0.0f), PLAYER_HEALTH_INDICATOR_SIZE, PLAYER_HEALTH_INDICATOR_SIZE, false);
+    Block plr_2_health_indicator(glm::vec2(WINDOW_WIDTH<float> - 10.0f - PLAYER_SHIP_WIDTH, WINDOW_HEIGHT<float> - 10.0f - PLAYER_HEALTH_INDICATOR_SIZE), glm::vec3(0.0f, 255.0f, 0.0f), PLAYER_HEALTH_INDICATOR_SIZE, PLAYER_HEALTH_INDICATOR_SIZE, false);
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -132,7 +135,7 @@ int main()
     GameData game_data = {
         .lazers = {},
         .player_1 = &player_1,
-        .player_2 = &player_2
+        .player_2 = &player_2,
     };
 
     glfwSetWindowUserPointer(window, &game_data);
@@ -149,11 +152,38 @@ int main()
         player_2.update();
         for (std::size_t i = 0; i < game_data.lazers.size(); ++i){
             game_data.lazers[i].update();
-            const glm::vec2 lazer_pos = game_data.lazers[i].get_position();
-            if (lazer_pos.x + game_data.lazers[i].width < 0.0f || lazer_pos.x > WINDOW_WIDTH<float>){
+            const bool is_moving_right = game_data.lazers[i].velocity.x > 0.0f;
+            const glm::vec2 lazer_pos = game_data.lazers[i].get_position(),
+                            player_pos = is_moving_right ? player_2.get_position() : player_1.get_position();
+            const bool hit_player = (is_moving_right ? (lazer_pos.x + LAZER_WIDTH >= WINDOW_WIDTH<float> - PLAYER_SHIP_WIDTH) : (lazer_pos.x <= PLAYER_SHIP_WIDTH)) && lazer_pos.y >= player_pos.y && lazer_pos.y + LAZER_HEIGHT <= player_pos.y + PLAYER_SHIP_HEIGHT;
+            if ((lazer_pos.x + game_data.lazers[i].width < 0.0f || lazer_pos.x > WINDOW_WIDTH<float>) || hit_player){
                 game_data.lazers[i].destroy();
                 game_data.lazers.erase(game_data.lazers.begin() + i);
                 --i;
+                if (hit_player){
+                    Block* const plr_health_indicator = is_moving_right ? &plr_2_health_indicator : &plr_1_health_indicator;
+                    const glm::vec3 color = plr_health_indicator->get_color();
+                    if (color.g == 255.0f){
+                        plr_health_indicator->set_color(glm::vec3(255.0f, 202.0f, 12.0f));
+                    }
+                    else if (color == glm::vec3(255.0f, 202.0f, 12.0f)){
+                        plr_health_indicator->set_color(glm::vec3(255.0f, 0.0f, 0.0f));
+                    }
+                    else{
+                        std::cout << "Player " << (is_moving_right ? '1' : '2') << std::endl;
+                        glDeleteProgram(shader_program);
+                        player_1.destroy();
+                        player_2.destroy();
+                        for (auto& lazer : game_data.lazers){
+                            lazer.destroy();
+                        }
+                        plr_1_health_indicator.destroy();
+                        plr_2_health_indicator.destroy();
+                        glfwDestroyWindow(window);
+                        glfwTerminate();
+                        return 0;
+                    }
+                }
             }
         }
 
@@ -165,6 +195,8 @@ int main()
         for (const auto& lazer : game_data.lazers){
             lazer.draw();
         }
+        plr_1_health_indicator.draw();
+        plr_2_health_indicator.draw();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -176,6 +208,8 @@ int main()
     for (auto& lazer : game_data.lazers){
         lazer.destroy();
     }
+    plr_1_health_indicator.destroy();
+    plr_2_health_indicator.destroy();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
