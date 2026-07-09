@@ -33,7 +33,7 @@ public:
 
     void set_color(const glm::vec3& color);
     void draw() const;
-    void update();
+    void update(const double fixed_delta_time);
 
     void destroy();
 };

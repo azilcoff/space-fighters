@@ -44,16 +44,16 @@ void Block::update_vertices()
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(GLfloat), vertices.data());
 }
 
-void Block::update()
+void Block::update(const double fixed_delta_time)
 {
+    const glm::vec2 next_pos  = glm::vec2(position.x + velocity.x * fixed_delta_time, position.y + velocity.y * fixed_delta_time);
     if (solid){
-        const glm::vec2 next_pos  = position + velocity;
         if (next_pos.y > 0.0f && next_pos.y + height < WINDOW_HEIGHT<float>){
             position = next_pos;
         }
     }
     else{
-        position += velocity;
+        position = next_pos;
     }
     update_vertices();
 }

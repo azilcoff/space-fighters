@@ -60,6 +60,7 @@ struct GameData
     Block* player_2;
     Block* plr_1_health_indicator;
     Block* plr_2_health_indicator;
+    unsigned int* shoot_timer;
 };
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -74,17 +75,21 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             p_game_data->player_2->velocity.y = -PLAYER_SPEED;
         else if (key == GLFW_KEY_DOWN)
             p_game_data->player_2->velocity.y = PLAYER_SPEED; 
-        else if (key == GLFW_KEY_Q){
-            const glm::vec2 player_pos = p_game_data->player_1->get_position();
-            Block lazer(glm::vec2(player_pos.x + LAZER_WIDTH, player_pos.y + p_game_data->player_1->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
-            lazer.velocity.x = LAZER_SPEED;
-            p_game_data->lazers.push_back(lazer);
-        }
-        else if (key == GLFW_KEY_ENTER){
-            const glm::vec2 player_pos = p_game_data->player_2->get_position();
-            Block lazer(glm::vec2(player_pos.x - LAZER_WIDTH, player_pos.y + p_game_data->player_2->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
-            lazer.velocity.x = -LAZER_SPEED;
-            p_game_data->lazers.push_back(lazer);
+        if (*p_game_data->shoot_timer >= PLAYER_SHOOT_INTERVAL){
+            if (key == GLFW_KEY_Q){
+                const glm::vec2 player_pos = p_game_data->player_1->get_position();
+                Block lazer(glm::vec2(player_pos.x + LAZER_WIDTH, player_pos.y + p_game_data->player_1->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
+                lazer.velocity.x = LAZER_SPEED;
+                p_game_data->lazers.push_back(lazer);
+                *p_game_data->shoot_timer = 0;
+            }
+            else if (key == GLFW_KEY_SPACE){
+                const glm::vec2 player_pos = p_game_data->player_2->get_position();
+                Block lazer(glm::vec2(player_pos.x - LAZER_WIDTH, player_pos.y + p_game_data->player_2->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
+                lazer.velocity.x = -LAZER_SPEED;
+                p_game_data->lazers.push_back(lazer);
+                *p_game_data->shoot_timer = 0;
+            }
         }
     }
     else{
@@ -116,6 +121,7 @@ int main()
 
     glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
     gladLoadGL();
 
     glViewport(0, 0, WINDOW_WIDTH<GLsizei>, WINDOW_HEIGHT<GLsizei>);
@@ -132,73 +138,89 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    GameData game_data = {
-        .lazers = {},
-        .player_1 = &player_1,
-        .player_2 = &player_2,
-    };
-
-    glfwSetWindowUserPointer(window, &game_data);
-
-    glfwSetKeyCallback(window, key_callback);
-
     glUseProgram(shader_program);
     const glm::mat4 projection = glm::ortho(0.0f, WINDOW_WIDTH<float>, WINDOW_HEIGHT<float>, 0.0f);
     glUniformMatrix4fv(glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
+    constexpr double frame_interval = 1.0 / 60;
+    double last_time = 0.0;
+    double last_frame_time = 0.0;
+    double spent_time = 0.0;
+
+    unsigned int shoot_timer = 0;
+    GameData game_data = {
+        .lazers = {},
+        .player_1 = &player_1,
+        .player_2 = &player_2,
+        .shoot_timer = &shoot_timer 
+    };
+
+    glfwSetWindowUserPointer(window, &game_data);
+    glfwSetKeyCallback(window, key_callback);
+
     while (!glfwWindowShouldClose(window)){
         //Update blocks here
-        player_1.update();
-        player_2.update();
-        for (std::size_t i = 0; i < game_data.lazers.size(); ++i){
-            game_data.lazers[i].update();
-            const bool is_moving_right = game_data.lazers[i].velocity.x > 0.0f;
-            const glm::vec2 lazer_pos = game_data.lazers[i].get_position(),
-                            player_pos = is_moving_right ? player_2.get_position() : player_1.get_position();
-            const bool hit_player = (is_moving_right ? (lazer_pos.x + LAZER_WIDTH >= WINDOW_WIDTH<float> - PLAYER_SHIP_WIDTH) : (lazer_pos.x <= PLAYER_SHIP_WIDTH)) && lazer_pos.y >= player_pos.y && lazer_pos.y + LAZER_HEIGHT <= player_pos.y + PLAYER_SHIP_HEIGHT;
-            if ((lazer_pos.x + game_data.lazers[i].width < 0.0f || lazer_pos.x > WINDOW_WIDTH<float>) || hit_player){
-                game_data.lazers[i].destroy();
-                game_data.lazers.erase(game_data.lazers.begin() + i);
-                --i;
-                if (hit_player){
-                    Block* const plr_health_indicator = is_moving_right ? &plr_2_health_indicator : &plr_1_health_indicator;
-                    const glm::vec3 color = plr_health_indicator->get_color();
-                    if (color.g == 255.0f){
-                        plr_health_indicator->set_color(glm::vec3(255.0f, 202.0f, 12.0f));
-                    }
-                    else if (color == glm::vec3(255.0f, 202.0f, 12.0f)){
-                        plr_health_indicator->set_color(glm::vec3(255.0f, 0.0f, 0.0f));
-                    }
-                    else{
-                        std::cout << "Player " << (is_moving_right ? '1' : '2') << std::endl;
-                        glDeleteProgram(shader_program);
-                        player_1.destroy();
-                        player_2.destroy();
-                        for (auto& lazer : game_data.lazers){
-                            lazer.destroy();
+        const double now = glfwGetTime();
+        const double delta_time = now - last_time;
+        last_time = now;
+        spent_time += delta_time;
+
+        if (spent_time >= frame_interval){
+            const double fixed_delta_time = now - last_frame_time;
+            last_frame_time = now;
+            spent_time = 0.0;
+            player_1.update(fixed_delta_time);
+            player_2.update(fixed_delta_time);
+            for (std::size_t i = 0; i < game_data.lazers.size(); ++i){
+                game_data.lazers[i].update(fixed_delta_time);
+                const bool is_moving_right = game_data.lazers[i].velocity.x > 0.0f;
+                const glm::vec2 lazer_pos = game_data.lazers[i].get_position(),
+                                player_pos = is_moving_right ? player_2.get_position() : player_1.get_position();
+                const bool hit_player = (is_moving_right ? (lazer_pos.x + LAZER_WIDTH >= WINDOW_WIDTH<float> - PLAYER_SHIP_WIDTH) : (lazer_pos.x <= PLAYER_SHIP_WIDTH)) && lazer_pos.y >= player_pos.y && lazer_pos.y + LAZER_HEIGHT <= player_pos.y + PLAYER_SHIP_HEIGHT;
+                if ((lazer_pos.x + game_data.lazers[i].width < 0.0f || lazer_pos.x > WINDOW_WIDTH<float>) || hit_player){
+                    game_data.lazers[i].destroy();
+                    game_data.lazers.erase(game_data.lazers.begin() + i);
+                    --i;
+                    if (hit_player){
+                        Block* const plr_health_indicator = is_moving_right ? &plr_2_health_indicator : &plr_1_health_indicator;
+                        const glm::vec3 color = plr_health_indicator->get_color();
+                        if (color.g == 255.0f){
+                            plr_health_indicator->set_color(glm::vec3(255.0f, 202.0f, 12.0f));
                         }
-                        plr_1_health_indicator.destroy();
-                        plr_2_health_indicator.destroy();
-                        glfwDestroyWindow(window);
-                        glfwTerminate();
-                        return 0;
+                        else if (color == glm::vec3(255.0f, 202.0f, 12.0f)){
+                            plr_health_indicator->set_color(glm::vec3(255.0f, 0.0f, 0.0f));
+                        }   
+                        else{
+                            std::cout << "Player " << (is_moving_right ? '1' : '2') << std::endl;
+                            glDeleteProgram(shader_program);
+                            player_1.destroy();
+                            player_2.destroy();
+                            for (auto& lazer : game_data.lazers){
+                                lazer.destroy();
+                            }
+                            plr_1_health_indicator.destroy();
+                            plr_2_health_indicator.destroy();
+                            glfwDestroyWindow(window);
+                            glfwTerminate();
+                            return 0;
+                        }
                     }
                 }
             }
+            if (shoot_timer < PLAYER_SHOOT_INTERVAL){
+                ++shoot_timer;
+            }
+            glClear(GL_COLOR_BUFFER_BIT);
+            glUseProgram(shader_program);
+            //Draw blocks here
+            player_1.draw();
+            player_2.draw();
+            for (const auto& lazer : game_data.lazers)
+                lazer.draw();
+            plr_1_health_indicator.draw();
+            plr_2_health_indicator.draw();
+            glfwSwapBuffers(window);
         }
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glUseProgram(shader_program);
-        //Draw blocks here
-        player_1.draw();
-        player_2.draw();
-        for (const auto& lazer : game_data.lazers){
-            lazer.draw();
-        }
-        plr_1_health_indicator.draw();
-        plr_2_health_indicator.draw();
-
-        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
