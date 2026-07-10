@@ -7,7 +7,6 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <algorithm>
 #include <cstddef>
 #include "globals.hpp"
 #include "block.h"
@@ -124,7 +123,7 @@ int main()
     gladLoadGL();
 
     glViewport(0, 0, WINDOW_WIDTH<GLsizei>, WINDOW_HEIGHT<GLsizei>);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(BACKGROUND_R, BACKGROUND_G, BACKGROUND_B, 1.0f);
 
     GLuint shader_program = load_shader_program();
 
