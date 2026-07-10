@@ -60,7 +60,8 @@ struct GameData
     Block* player_2;
     Block* plr_1_health_indicator;
     Block* plr_2_health_indicator;
-    unsigned int* shoot_timer;
+    unsigned int* plr_1_shoot_timer;
+    unsigned int* plr_2_shoot_timer;
 };
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -69,27 +70,25 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (action == GLFW_PRESS){
         if (key == GLFW_KEY_W)
             p_game_data->player_1->velocity.y = -PLAYER_SPEED;
-        else if (key == GLFW_KEY_S)
+        if (key == GLFW_KEY_S)
             p_game_data->player_1->velocity.y = PLAYER_SPEED;
-        else if (key == GLFW_KEY_UP)
+        if (key == GLFW_KEY_UP)
             p_game_data->player_2->velocity.y = -PLAYER_SPEED;
-        else if (key == GLFW_KEY_DOWN)
+        if (key == GLFW_KEY_DOWN)
             p_game_data->player_2->velocity.y = PLAYER_SPEED; 
-        if (*p_game_data->shoot_timer >= PLAYER_SHOOT_INTERVAL){
-            if (key == GLFW_KEY_Q){
-                const glm::vec2 player_pos = p_game_data->player_1->get_position();
-                Block lazer(glm::vec2(player_pos.x + LAZER_WIDTH, player_pos.y + p_game_data->player_1->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
-                lazer.velocity.x = LAZER_SPEED;
-                p_game_data->lazers.push_back(lazer);
-                *p_game_data->shoot_timer = 0;
-            }
-            else if (key == GLFW_KEY_SPACE){
-                const glm::vec2 player_pos = p_game_data->player_2->get_position();
-                Block lazer(glm::vec2(player_pos.x - LAZER_WIDTH, player_pos.y + p_game_data->player_2->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
-                lazer.velocity.x = -LAZER_SPEED;
-                p_game_data->lazers.push_back(lazer);
-                *p_game_data->shoot_timer = 0;
-            }
+        if (key == GLFW_KEY_Q && *p_game_data->plr_1_shoot_timer >= PLAYER_SHOOT_INTERVAL){
+            const glm::vec2 player_pos = p_game_data->player_1->get_position();
+            Block lazer(glm::vec2(player_pos.x + LAZER_WIDTH, player_pos.y + p_game_data->player_1->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
+            lazer.velocity.x = LAZER_SPEED;
+            p_game_data->lazers.push_back(lazer);
+            *p_game_data->plr_1_shoot_timer = 0;
+        }
+        if (key == GLFW_KEY_SPACE && *p_game_data->plr_2_shoot_timer >= PLAYER_SHOOT_INTERVAL){
+            const glm::vec2 player_pos = p_game_data->player_2->get_position();
+            Block lazer(glm::vec2(player_pos.x - LAZER_WIDTH, player_pos.y + p_game_data->player_2->height / 2.0f - LAZER_HEIGHT / 2.0f), glm::vec3(255.0f, 0.0f, 0.0f), LAZER_WIDTH, LAZER_HEIGHT, false);
+            lazer.velocity.x = -LAZER_SPEED;
+            p_game_data->lazers.push_back(lazer);
+            *p_game_data->plr_2_shoot_timer = 0;
         }
     }
     else{
@@ -147,12 +146,14 @@ int main()
     double last_frame_time = 0.0;
     double spent_time = 0.0;
 
-    unsigned int shoot_timer = 0;
+    unsigned int plr_1_shoot_timer = 0;
+    unsigned int plr_2_shoot_timer = 0;
     GameData game_data = {
         .lazers = {},
         .player_1 = &player_1,
         .player_2 = &player_2,
-        .shoot_timer = &shoot_timer 
+        .plr_1_shoot_timer = &plr_1_shoot_timer,
+        .plr_2_shoot_timer = &plr_2_shoot_timer
     };
 
     glfwSetWindowUserPointer(window, &game_data);
@@ -207,8 +208,11 @@ int main()
                     }
                 }
             }
-            if (shoot_timer < PLAYER_SHOOT_INTERVAL){
-                ++shoot_timer;
+            if (plr_1_shoot_timer < PLAYER_SHOOT_INTERVAL){
+                ++plr_1_shoot_timer;
+            }
+            if (plr_2_shoot_timer < PLAYER_SHOOT_INTERVAL){
+                ++plr_2_shoot_timer;
             }
             glClear(GL_COLOR_BUFFER_BIT);
             glUseProgram(shader_program);
